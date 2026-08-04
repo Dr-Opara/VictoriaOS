@@ -1,17 +1,49 @@
-from backend.core.brain import VictoriaBrain
+from __future__ import annotations
+
+import logging
+import re
+from typing import Any
+
+from backend.core.context import ContextBuilder
+from backend.core.orchestrator import VictoriaOrchestrator
+from backend.integrations.email.service import EmailService
+
+logger = logging.getLogger("VictoriaOS")
 
 
 class VictoriaAssistant:
+    """Top-level assistant interface used by the API and voice surfaces."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        orchestrator: VictoriaOrchestrator | None = None,
+        email_service: EmailService | None = None,
+        context_builder: ContextBuilder | None = None,
+    ) -> None:
+        self.orchestrator = orchestrator or VictoriaOrchestrator()
+        self.email = email_service or EmailService()
+        self.context = context_builder or self.orchestrator.context
 
-        self.brain = VictoriaBrain()
+    def think(self, command: str, session_id: str = "default") -> dict[str, Any]:
+        """Process a user command and return Victoria's response payload."""
+        normalized_command = command.strip()
+        logger.info("VictoriaAssistant received command: %s", normalized_command)
 
-    def think(self, command: str):
+        if self._is_email_check_request(normalized_command):
+            logger.info("Routing command to EmailService unread summary.")
+            response = self.email.summarize_unread()
+            self.context.record_turn(session_id, normalized_command, response)
+            return {"assistant": "Victoria", "response": response}
 
-        intent = self.brain.classify(command)
+        return self.orchestrator.process(normalized_command, session_id=session_id)
 
-        return {
-            "command": command,
-            "intent": intent.value
-        }
+    @staticmethod
+    def _is_email_check_request(command: str) -> bool:
+        """Return True when a command asks Victoria to check unread email."""
+        normalized = command.lower()
+        email_terms = ("email", "emails", "mail", "inbox")
+        action_pattern = r"\b(check|read|summarize|summary|show|scan|review)\b"
+
+        return any(term in normalized for term in email_terms) and bool(
+            re.search(action_pattern, normalized)
+        )
