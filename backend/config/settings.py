@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    api_key: str = os.getenv("API_KEY", "")
+    rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
+    rate_limit_window_seconds: int = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

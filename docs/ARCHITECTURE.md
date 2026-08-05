@@ -99,6 +99,59 @@ in this environment.
 every request's method, path, status, duration, and model, and logs
 exceptions with a traceback before they propagate.
 
+## Security (`backend/security/`)
+
+VictoriaOS is a single-user (Dr. Opara) assistant, not a multi-tenant
+service — the security model is scoped to that threat model rather than
+building out full OAuth/JWT user accounts and RBAC for one user:
+
+- `api_key.py` (`ApiKeyMiddleware`) — when `API_KEY` is set, every request
+  except `/health` and the docs routes must send a matching `X-API-Key`
+  header. Unset in local dev (logs one warning, stays open) so `uvicorn
+  --reload` keeps working without ceremony; **must** be set before exposing
+  the API beyond localhost.
+- `rate_limit.py` (`RateLimitMiddleware`) — in-memory sliding-window limiter
+  keyed by client IP (`RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS`,
+  default 120/60s). In-process by design; a multi-instance deployment would
+  swap in a Redis-backed limiter behind the same interface.
+- `headers.py` (`SecurityHeadersMiddleware`) — `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` on every
+  response; `Strict-Transport-Security` is added only when the request
+  arrived over HTTPS (or `X-Forwarded-Proto: https`) so plain HTTP access
+  during local dev is never broken by HSTS.
+- `audit.py` (`audit_log`) — a separate `logs/audit.log`, written to from
+  the memory (`remember`/`forget`) and task (`create`/`complete`/`delete`)
+  endpoints — sensitive mutations get their own trail independent of the
+  general request log.
+
+Middleware order in `backend/app.py` (outermost to innermost on the
+request): security headers -> rate limit -> API key -> CORS -> request
+logging -> route handler.
+
+## Deployment (`docker/`, `docker-compose.yml`, `.github/workflows/ci.yml`)
+
+- `docker/backend.Dockerfile` — slim Python image, non-root user, container
+  healthcheck against `/health`.
+- `docker/frontend.Dockerfile` — multi-stage Node build using Next.js
+  `output: "standalone"` (set in `next.config.ts`), non-root runtime user.
+- `docker-compose.yml` — `backend` + `frontend` + an `nginx` reverse proxy
+  (`docker/nginx.conf`) that routes `/api/*` to the backend and everything
+  else to the dashboard; the backend's SQLite data and logs live in named
+  volumes so they survive container recreation. TLS termination has a home
+  in the nginx config but no certificate is generated — that needs a real
+  domain.
+- `.github/workflows/ci.yml` — on every push/PR to `main`: backend
+  (`ruff check backend`, `pytest`, import-boot check) and frontend
+  (`npm run lint`, `npm run build`) run as separate jobs.
+- `scripts/backup_db.py` — SQLite online-backup API copy of `data/victoria.db`
+  into `backups/`, with retention pruning (`--keep`, default 14). Nothing
+  schedules it yet; run it from cron/Task Scheduler/a systemd timer on
+  whatever host runs the backend.
+
+The Docker images have not been built in this environment (no Docker daemon
+available here) — build and run `docker compose up` at least once before
+depending on them for a real deployment.
+
 ## System / observability endpoints
 
 `backend/api/system.py` exposes what the dashboard (and any other client)

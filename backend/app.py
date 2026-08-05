@@ -14,6 +14,9 @@ from backend.config.settings import get_settings
 from backend.core.assistant import VictoriaAssistant
 from backend.core.logger import logger
 from backend.database.migrations import run_migrations
+from backend.security.api_key import ApiKeyMiddleware
+from backend.security.headers import SecurityHeadersMiddleware
+from backend.security.rate_limit import RateLimitMiddleware
 from backend.voice.engine import VoiceEngine
 
 settings = get_settings()
@@ -28,6 +31,16 @@ run_migrations()
 
 logger.info("VictoriaOS started successfully.")
 
+# Middleware executes in reverse of registration order (last added runs
+# first on the request). Registered here so the effective request order is:
+# security headers -> rate limit -> API key -> CORS -> request logging -> route.
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window_seconds,
+)
+app.add_middleware(ApiKeyMiddleware, api_key=settings.api_key)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.dashboard_origins,

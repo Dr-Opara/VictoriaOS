@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from backend.security.audit import audit_log
 from backend.task.manager import TaskManager
 
 router = APIRouter(tags=["Tasks"])
@@ -36,6 +37,7 @@ def list_tasks(status: str | None = None):
 def create_task(request: CreateTaskRequest):
     """Create a new task for Victoria to track."""
     task = task_manager.create_task(request.title, request.description)
+    audit_log("task.create", f"id={task.id} title={task.title!r}")
     return _serialize(task)
 
 
@@ -46,6 +48,7 @@ def complete_task(task_id: int):
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found.")
 
+    audit_log("task.complete", f"id={task.id}")
     return _serialize(task)
 
 
@@ -55,4 +58,5 @@ def delete_task(task_id: int):
     if not task_manager.delete_task(task_id):
         raise HTTPException(status_code=404, detail="Task not found.")
 
+    audit_log("task.delete", f"id={task_id}")
     return {"status": "deleted", "id": task_id}

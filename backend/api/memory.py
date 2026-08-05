@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from backend.memory.service import MemoryService
+from backend.security.audit import audit_log
 
 router = APIRouter(tags=["Memory"])
 memory_service = MemoryService()
@@ -34,6 +35,7 @@ def list_memory(query: str | None = None, limit: int = 20):
 def remember(request: RememberRequest):
     """Store a new fact in Victoria's long-term memory."""
     memory = memory_service.remember(request.key, request.value)
+    audit_log("memory.remember", f"key={memory.key!r}")
     return {"status": "remembered", "key": memory.key, "value": memory.value}
 
 
@@ -41,4 +43,5 @@ def remember(request: RememberRequest):
 def forget(request: ForgetRequest):
     """Delete every memory stored under the given key."""
     removed = memory_service.forget(request.key)
+    audit_log("memory.forget", f"key={request.key!r} removed={removed}")
     return {"status": "forgotten", "key": request.key, "removed": removed}

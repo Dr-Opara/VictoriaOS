@@ -1,5 +1,31 @@
 # Changelog
 
+## Sprint 14/15 — Security + Production
+
+- Added `backend/security/`: `ApiKeyMiddleware` (shared-secret auth via
+  `X-API-Key`, appropriate for a single-user assistant rather than full
+  OAuth/JWT accounts), `RateLimitMiddleware` (in-memory sliding window),
+  `SecurityHeadersMiddleware` (nosniff/frame-options/referrer-policy/
+  permissions-policy, HSTS when behind HTTPS), and `audit.py` (a dedicated
+  `logs/audit.log` for memory/task mutations).
+- New settings: `API_KEY`, `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS`.
+- Added Docker support: `docker/backend.Dockerfile`, `docker/frontend.Dockerfile`
+  (Next.js standalone output), `docker/nginx.conf` reverse proxy, and a
+  filled-in `docker-compose.yml` (backend + frontend + nginx, named volumes
+  for SQLite data/logs, backend healthcheck). **Not built/verified in this
+  environment** — no Docker daemon was available; run `docker compose up`
+  and smoke-test before relying on it.
+- Added `.github/workflows/ci.yml`: backend (ruff, pytest, import-boot
+  check) and frontend (lint, build) as separate jobs on every push/PR to
+  `main`.
+- Added `scripts/backup_db.py`: SQLite online-backup copy with retention
+  pruning; nothing schedules it yet (needs a host-level cron/Task
+  Scheduler/systemd timer).
+- Verified: 28/28 backend tests pass (5 new, covering the security
+  middleware and the backup script), `ruff check .` clean across the whole
+  repo, app still boots and CORS/API-key/rate-limit behavior confirmed live
+  against a running server.
+
 ## Sprint 4 — Executive Dashboard
 
 - Scaffolded `frontend/dashboard`: Next.js 16 (App Router, Turbopack) +

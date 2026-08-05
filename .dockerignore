@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+data/
+logs/
+*.db
+.env
+.env.local
+frontend/dashboard/node_modules
+frontend/dashboard/.next
+tests/
+docs/

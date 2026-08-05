@@ -18,7 +18,25 @@
 - [x] Memory (persistent, survives restarts)
 - [x] Brain / Orchestrator
 - [x] Skills
-- [ ] Security (auth, secrets rotation, request signing)
+- [x] Security: shared API key auth, rate limiting, security headers, audit log
+- [ ] Multi-user roles/RBAC — not applicable yet; VictoriaOS is single-user (Dr. Opara) by design
+- [ ] Encrypted secrets at rest (currently plain `.env`; fine for a single local deployment,
+      revisit if secrets move to a shared/cloud host)
+
+## Production / Deployment
+
+- [x] `docker/backend.Dockerfile`, `docker/frontend.Dockerfile` (Next.js standalone output)
+- [x] `docker-compose.yml` (backend + frontend + nginx reverse proxy)
+- [x] `docker/nginx.conf` reverse proxy (HTTP; TLS termination point is there but no
+      certificate is generated — needs a real domain)
+- [x] GitHub Actions CI (`.github/workflows/ci.yml`): backend lint+test, frontend lint+build,
+      on every push/PR to main
+- [x] Docker healthcheck (`/health`) on the backend container
+- [x] `scripts/backup_db.py` — SQLite online backup + retention pruning
+- [ ] Docker images are unbuilt/unverified in this environment (no Docker daemon available
+      here) — build and smoke-test `docker compose up` before relying on them in production
+- [ ] Automated recurring backups (the script exists; nothing schedules it yet — cron/Task
+      Scheduler/systemd timer needed on the host)
 
 ## Voice
 

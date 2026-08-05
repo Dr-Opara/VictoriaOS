@@ -51,6 +51,29 @@ npm run lint
 npm run build
 ```
 
+## Deployment
+
+```bash
+cp .env.example .env   # set API_KEY before exposing this beyond localhost
+docker compose up --build
+```
+
+Runs the backend, dashboard, and an nginx reverse proxy (`docker/nginx.conf`,
+routes `/api/*` to the backend, everything else to the dashboard). See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for what each container does.
+CI (`.github/workflows/ci.yml`) lints and tests both the backend and
+dashboard on every push/PR to `main`.
+
+## Security
+
+- Set `API_KEY` to require an `X-API-Key` header on every request except
+  `/health` and the docs — unset, the API is unauthenticated (fine for
+  local dev, not for anything beyond localhost).
+- `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` control the built-in
+  rate limiter (default 120 requests / 60s per IP).
+- Memory and task mutations are written to `logs/audit.log` separately from
+  the general request log.
+
 ## Key endpoints
 
 | Method | Path | Description |
