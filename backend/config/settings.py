@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    dashboard_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

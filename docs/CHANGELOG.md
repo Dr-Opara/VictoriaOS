@@ -1,5 +1,31 @@
 # Changelog
 
+## Sprint 4 — Executive Dashboard
+
+- Scaffolded `frontend/dashboard`: Next.js 16 (App Router, Turbopack) +
+  React 19 + TypeScript + Tailwind CSS 4 (installed "latest" rather than the
+  requested Next 15, since 16 was current stable at scaffold time).
+- Added TanStack Query, Framer Motion, `next-themes` (dark mode by default),
+  and hand-built shadcn/ui-style primitives (Button, Card, Badge, Input,
+  Textarea) on top of Radix + `class-variance-authority` — the `shadcn` CLI's
+  `init` wizard couldn't be driven non-interactively, so the primitives were
+  authored directly instead of skipped.
+- Pages: Overview, Chat, Voice (browser STT demo), Email, Memory, Tasks,
+  Calendar, Weather, AI Usage, Logs, Settings — sidebar nav on desktop,
+  bottom nav on mobile.
+- Added backend endpoints the dashboard needed: `GET /system/status`,
+  `GET /system/usage`, `GET /system/logs`, `GET /email/unread`
+  (`backend/api/system.py`), plus CORS middleware
+  (`Settings.dashboard_origins`) so the dashboard can call the API from
+  `localhost:3000`.
+- Calendar and Weather pages honestly show a "not connected" state rather
+  than fabricated data — neither has a backend integration yet (both need
+  external OAuth/API credentials, tracked in the roadmap).
+- Verified: `npm run lint` and `npm run build` both clean; backend serves
+  the new endpoints correctly with CORS preflight verified via curl; all 20
+  backend tests still pass; `database.py`/`migrations.py` were reconciled
+  after a manual edit (added `init_database()`) without changing behavior.
+
 ## Sprint 3 — Voice Platform
 
 - Added `backend/voice/vad.py`: numpy energy-based voice activity detection

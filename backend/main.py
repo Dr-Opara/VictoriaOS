@@ -1,48 +1,27 @@
-from fastapi import FastAPI
+"""Entrypoint for running VictoriaOS directly: ``python -m backend.main``.
+
+The FastAPI application itself lives in ``backend.app``; this module just
+launches it with uvicorn so there is a single source of truth for routes,
+middleware, and startup behavior.
+"""
+
+from __future__ import annotations
+
+import uvicorn
 
 from backend.config.settings import get_settings
-from backend.core.logger import logger
-from backend.core.assistant import VictoriaAssistant
-from backend.voice.engine import VoiceEngine
-from backend.api.assistant import router as assistant_router
-
-settings = get_settings()
-
-app = FastAPI(
-    title=settings.app_name,
-    description="Private AI Executive Assistant",
-    version=settings.app_version,
-)
-
-logger.info("VictoriaOS started successfully.")
-
-voice = VoiceEngine()
-assistant = VictoriaAssistant()
-app.include_router(assistant_router)
-
-@app.get("/")
-async def root():
-    return {
-        "assistant": "Victoria",
-        "status": "Online",
-        "owner": "Dr. Opara",
-        "environment": settings.environment,
-    }
 
 
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "version": settings.app_version,
-    }
+def main() -> None:
+    """Run the VictoriaOS API server."""
+    settings = get_settings()
+    uvicorn.run(
+        "backend.app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.environment == "development",
+    )
 
 
-@app.get("/voice")
-async def voice_test(text: str):
-    return voice.process(text)
-
-
-@app.get("/think")
-async def think(command: str):
-    return assistant.think(command)
+if __name__ == "__main__":
+    main()

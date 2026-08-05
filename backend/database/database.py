@@ -7,6 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.config.settings import get_settings
+from backend.core.logger import logger
+from backend.database.base import Base
+from backend.database import models  # noqa: F401  (ensures models are registered on Base)
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -41,3 +44,9 @@ def get_db() -> Generator[Session, None, None]:
 def session_scope() -> Session:
     """Return a new database session for manual use outside of FastAPI."""
     return SessionLocal()
+
+
+def init_database() -> None:
+    """Create any tables that do not yet exist (idempotent)."""
+    logger.info("Initializing database schema.")
+    Base.metadata.create_all(bind=engine)

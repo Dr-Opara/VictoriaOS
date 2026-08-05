@@ -15,10 +15,13 @@ Version: 1.0
 - **Context-aware GPT** — every request flows through the AI Context Builder, so replies are grounded in prior conversation, preferences, and open tasks.
 - **Yahoo Mail** — reads and summarizes unread mail.
 - **Voice pipeline** — wake word ("Hello Victoria"), voice activity detection, speech-to-text/text-to-speech, speaker gating, and multi-turn conversation mode.
+- **Executive Dashboard** — Next.js/React web UI (Chat, Voice, Email, Memory, Tasks, Calendar, Weather, AI Usage, Logs, Settings) backed by the same API.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## Running locally
+
+Backend:
 
 ```bash
 pip install -r requirements.txt
@@ -28,11 +31,24 @@ uvicorn backend.app:app --reload
 
 The SQLite database is created automatically on startup at `data/victoria.db`.
 
+Dashboard:
+
+```bash
+cd frontend/dashboard
+npm install
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL, defaults to http://localhost:8000
+npm run dev
+```
+
 ## Testing
 
 ```bash
 python -m pytest
 python -m ruff check backend   # if ruff is installed
+
+cd frontend/dashboard
+npm run lint
+npm run build
 ```
 
 ## Key endpoints
@@ -48,3 +64,7 @@ python -m ruff check backend   # if ruff is installed
 | POST | `/tasks/{id}/complete` | Complete a task |
 | DELETE | `/tasks/{id}` | Delete a task |
 | POST | `/voice/command` | Full voice pipeline (audio in, audio out) |
+| GET | `/email/unread` | Unread Yahoo Mail messages |
+| GET | `/system/status` | Uptime, version, environment, model |
+| GET | `/system/usage` | Conversation/memory/task counts |
+| GET | `/system/logs?limit=...` | Tail of the application log |

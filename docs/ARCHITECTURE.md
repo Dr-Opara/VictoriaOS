@@ -98,3 +98,44 @@ in this environment.
 `logs/victoria.log`). `backend/app.py` adds an HTTP middleware that logs
 every request's method, path, status, duration, and model, and logs
 exceptions with a traceback before they propagate.
+
+## System / observability endpoints
+
+`backend/api/system.py` exposes what the dashboard (and any other client)
+needs to observe the running system without touching the database or log
+files directly: `GET /system/status` (uptime, version, environment, model),
+`GET /system/usage` (conversation/memory/task counts), `GET /system/logs`
+(tail of `logs/victoria.log`), and `GET /email/unread` (Yahoo Mail, reusing
+`EmailService`).
+
+## Executive Dashboard (`frontend/dashboard`)
+
+Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS 4, using
+TanStack Query for data fetching/polling and Framer Motion for transitions.
+Small hand-built UI primitives (`src/components/ui/`) follow the shadcn/ui
+pattern (Radix primitives + `class-variance-authority` + `tailwind-merge`)
+rather than depending on the `shadcn` CLI, since its interactive init flow
+isn't scriptable non-interactively.
+
+- `src/lib/api.ts` — typed fetch client for the backend; `NEXT_PUBLIC_API_URL`
+  controls the target (defaults to `http://localhost:8000`).
+- `src/components/providers.tsx` — wraps the app in `next-themes`
+  (`defaultTheme="dark"`) and a `QueryClient`.
+- `src/components/layout/` — `Sidebar` (desktop), `MobileNav` (bottom bar on
+  small screens), `TopBar` (live online/offline status pill).
+- Pages: `/` (overview), `/chat`, `/voice`, `/email`, `/memory`, `/tasks`,
+  `/calendar`, `/weather`, `/usage`, `/logs`, `/settings`. Calendar and
+  Weather intentionally render a "not connected" state — there is no backend
+  integration for either yet (see roadmap), and faking data would be
+  misleading.
+- The `/voice` page uses the browser's native `SpeechRecognition` API for a
+  local, always-available demo of live transcription; it is a UI convenience
+  only. Production voice runs through the backend pipeline described above
+  (`POST /voice/command`), not the browser API.
+- "Real-time" updates are implemented as TanStack Query polling (5-30s
+  intervals depending on the page) rather than WebSockets/SSE — a
+  deliberately simpler choice for v1 that can be swapped for a push-based
+  transport later without changing the page components' data-fetching shape.
+
+CORS: `backend/config/settings.py` exposes `dashboard_origins` (defaults to
+`http://localhost:3000`), applied via `CORSMiddleware` in `backend/app.py`.

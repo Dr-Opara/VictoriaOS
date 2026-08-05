@@ -1,5 +1,15 @@
 # VictoriaOS Roadmap
 
+## Executive Dashboard
+
+- [x] Next.js 16 / React 19 / TypeScript / Tailwind CSS 4 web app (`frontend/dashboard`)
+- [x] Dark mode by default, sidebar + mobile nav, TanStack Query polling for near-real-time data
+- [x] Chat, Voice (browser STT demo), Email, Memory, Tasks, AI Usage, Logs, Settings
+- [ ] Calendar / Weather pages are wired up but show a "not connected" state — they need a
+      calendar OAuth provider and a weather API key respectively before going live
+- [ ] True real-time updates (WebSocket/SSE) — currently polling every 5-30s per section
+- [ ] Authenticated dashboard access (currently assumes a trusted local network)
+
 ## Core Platform
 
 - [x] Configuration

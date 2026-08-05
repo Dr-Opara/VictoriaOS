@@ -3,9 +3,11 @@ from __future__ import annotations
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.assistant import router as assistant_router
 from backend.api.memory import router as memory_router
+from backend.api.system import router as system_router
 from backend.api.task import router as task_router
 from backend.api.voice import router as voice_router
 from backend.config.settings import get_settings
@@ -26,6 +28,14 @@ run_migrations()
 
 logger.info("VictoriaOS started successfully.")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.dashboard_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 voice = VoiceEngine()
 assistant = VictoriaAssistant()
 
@@ -33,6 +43,7 @@ app.include_router(assistant_router)
 app.include_router(memory_router)
 app.include_router(task_router)
 app.include_router(voice_router)
+app.include_router(system_router)
 
 
 @app.middleware("http")
