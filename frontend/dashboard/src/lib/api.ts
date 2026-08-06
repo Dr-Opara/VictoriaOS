@@ -11,22 +11,44 @@ export class ApiError extends Error {
   }
 }
 
+function apiHeaders(includeJson = true): HeadersInit {
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+  };
+}
+
+async function parseError(response: Response): Promise<string> {
+  const body = await response.text().catch(() => "");
+  if (!body) return response.statusText;
+
+  try {
+    const parsed = JSON.parse(body) as { detail?: string; message?: string };
+    return parsed.detail ?? parsed.message ?? body;
+  } catch {
+    return body;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
-      ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+      ...apiHeaders(),
       ...init?.headers,
     },
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new ApiError(body || response.statusText, response.status);
+    throw new ApiError(await parseError(response), response.status);
   }
 
   return response.json() as Promise<T>;
+}
+
+export interface HealthResponse {
+  status: string;
+  version: string;
 }
 
 export interface ThinkResponse {
@@ -42,12 +64,13 @@ export interface MemoryItem {
 }
 
 export type TaskPriority = "high" | "medium" | "low" | null;
+export type TaskStatus = "pending" | "completed";
 
 export interface TaskItem {
   id: number;
   title: string;
   description: string;
-  status: "pending" | "completed";
+  status: TaskStatus;
   priority: TaskPriority;
   due_at: string | null;
   created_at: string;
@@ -82,25 +105,6 @@ export interface SystemUsage {
   tasks_pending: number;
 }
 
-export interface CalendarEventItem {
-  id: number;
-  title: string;
-  description: string;
-  location: string;
-  start_time: string;
-  end_time: string;
-}
-
-export interface WeatherReport {
-  configured: boolean;
-  error?: string;
-  location?: string;
-  description?: string;
-  temperature_f?: string;
-  feels_like_f?: string;
-  humidity_percent?: string;
-}
-
 export interface DocumentSummary {
   id: number;
   filename: string;
@@ -116,16 +120,73 @@ export interface KnowledgeSearchResult {
   score: number;
 }
 
+export interface VoiceConnectResponse {
+  session_id: string;
+  wake_word: string;
+  sample_rate: number;
+  sample_width_bytes: number;
+  channels: number;
+  encoding: string;
+}
+
+export interface UploadOptions {
+  onProgress?: (percent: number) => void;
+}
+
+function uploadDocument(file: File, options?: UploadOptions): Promise<DocumentSummary> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/knowledge/documents`);
+
+    if (API_KEY) {
+      xhr.setRequestHeader("X-API-Key", API_KEY);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !options?.onProgress) return;
+      options.onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        options?.onProgress?.(100);
+        resolve(JSON.parse(xhr.responseText) as DocumentSummary);
+        return;
+      }
+
+      let message = xhr.statusText || "Upload failed";
+      try {
+        const parsed = JSON.parse(xhr.responseText) as { detail?: string; message?: string };
+        message = parsed.detail ?? parsed.message ?? message;
+      } catch {
+        if (xhr.responseText) message = xhr.responseText;
+      }
+      reject(new ApiError(message, xhr.status));
+    };
+
+    xhr.onerror = () => reject(new ApiError("Network error while uploading document.", 0));
+    xhr.send(formData);
+  });
+}
+
 export const api = {
+  root: () =>
+    request<{ assistant: string; status: string; owner: string; environment: string }>("/"),
+
+  health: () => request<HealthResponse>("/health"),
+
   think: (command: string, sessionId = "dashboard") =>
     request<ThinkResponse>(
       `/think?command=${encodeURIComponent(command)}&session_id=${encodeURIComponent(sessionId)}`,
     ),
 
   memory: {
-    list: (query?: string) =>
+    list: (query?: string, limit = 20) =>
       request<{ memories: MemoryItem[] }>(
-        `/memory${query ? `?query=${encodeURIComponent(query)}` : ""}`,
+        `/memory?limit=${limit}${query ? `&query=${encodeURIComponent(query)}` : ""}`,
       ),
     remember: (key: string, value: string) =>
       request<{ status: string; key: string; value: string }>("/remember", {
@@ -137,10 +198,14 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ key }),
       }),
+    replace: async (key: string, value: string) => {
+      await api.memory.forget(key);
+      return api.memory.remember(key, value);
+    },
   },
 
   tasks: {
-    list: (status?: string) =>
+    list: (status?: TaskStatus) =>
       request<{ tasks: TaskItem[] }>(`/tasks${status ? `?status=${status}` : ""}`),
     create: (title: string, description = "") =>
       request<TaskItem>("/tasks", {
@@ -151,15 +216,25 @@ export const api = {
       request<TaskItem>(`/tasks/${id}/complete`, { method: "POST" }),
     remove: (id: number) =>
       request<{ status: string; id: number }>(`/tasks/${id}`, { method: "DELETE" }),
+    replace: async (task: TaskItem, title: string, description: string) => {
+      const replacement = await api.tasks.create(title, description);
+      if (task.status === "completed") {
+        await api.tasks.complete(replacement.id);
+      }
+      await api.tasks.remove(task.id);
+      return replacement;
+    },
     prioritize: () =>
       request<{ plans: TaskPlan[] }>("/tasks/prioritize", { method: "POST" }),
   },
 
   email: {
-    unread: () =>
+    unread: (limit = 20) =>
       request<{ configured: boolean; error?: string; messages: EmailMessage[] }>(
-        "/email/unread",
+        `/email/unread?limit=${limit}`,
       ),
+    summarizeUnread: (sessionId = "dashboard-email") =>
+      api.think("Summarize my unread Yahoo Mail.", sessionId),
   },
 
   system: {
@@ -168,50 +243,18 @@ export const api = {
     logs: (limit = 200) => request<{ lines: string[] }>(`/system/logs?limit=${limit}`),
   },
 
-  calendar: {
-    today: () => request<{ events: CalendarEventItem[] }>("/calendar/today"),
-    upcoming: (limit = 10) =>
-      request<{ events: CalendarEventItem[] }>(`/calendar/upcoming?limit=${limit}`),
-    create: (event: {
-      title: string;
-      start_time: string;
-      end_time: string;
-      description?: string;
-      location?: string;
-    }) =>
-      request<CalendarEventItem>("/calendar/events", {
-        method: "POST",
-        body: JSON.stringify(event),
-      }),
-    cancel: (id: number) =>
-      request<{ status: string; id: number }>(`/calendar/events/${id}`, { method: "DELETE" }),
-  },
-
-  weather: {
-    current: () => request<WeatherReport>("/weather/current"),
-  },
-
   briefing: {
     get: () => request<{ briefing: string }>("/briefing"),
     voiceUrl: () => `${API_BASE_URL}/briefing/voice`,
   },
 
+  voice: {
+    connect: () => request<VoiceConnectResponse>("/voice/connect"),
+  },
+
   knowledge: {
     list: () => request<{ documents: DocumentSummary[] }>("/knowledge/documents"),
-    upload: async (file: File): Promise<DocumentSummary> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch(`${API_BASE_URL}/knowledge/documents`, {
-        method: "POST",
-        headers: API_KEY ? { "X-API-Key": API_KEY } : undefined,
-        body: formData,
-      });
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new ApiError(body || response.statusText, response.status);
-      }
-      return response.json();
-    },
+    upload: uploadDocument,
     remove: (id: number) =>
       request<{ status: string; id: number }>(`/knowledge/documents/${id}`, {
         method: "DELETE",
