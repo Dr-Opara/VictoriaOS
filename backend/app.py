@@ -6,10 +6,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.assistant import router as assistant_router
+from backend.api.briefing import router as briefing_router
+from backend.api.calendar import router as calendar_router
+from backend.api.knowledge import router as knowledge_router
 from backend.api.memory import router as memory_router
 from backend.api.system import router as system_router
 from backend.api.task import router as task_router
 from backend.api.voice import router as voice_router
+from backend.api.weather import router as weather_router
 from backend.config.settings import get_settings
 from backend.core.assistant import VictoriaAssistant
 from backend.core.logger import logger
@@ -57,6 +61,10 @@ app.include_router(memory_router)
 app.include_router(task_router)
 app.include_router(voice_router)
 app.include_router(system_router)
+app.include_router(calendar_router)
+app.include_router(weather_router)
+app.include_router(briefing_router)
+app.include_router(knowledge_router)
 
 
 @app.middleware("http")

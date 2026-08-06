@@ -15,6 +15,10 @@ Version: 1.0
 - **Context-aware GPT** — every request flows through the AI Context Builder, so replies are grounded in prior conversation, preferences, and open tasks.
 - **Yahoo Mail** — reads and summarizes unread mail.
 - **Voice pipeline** — wake word ("Hello Victoria"), voice activity detection, speech-to-text/text-to-speech, speaker gating, and multi-turn conversation mode. Runs across two machines: a Mini PC brain and a Raspberry Pi voice node — see [docs/VOICE_PIPELINE.md](docs/VOICE_PIPELINE.md).
+- **Executive Daily Briefing** — a spoken-style GPT-5 summary of today's calendar, weather, unread email, and tasks, with a personalized greeting (`GET /briefing`, `GET /briefing/voice`).
+- **Calendar** — a real local calendar (create/reschedule/cancel/today/upcoming); Google/Microsoft sync is a documented stub pending OAuth credentials.
+- **Knowledge Engine (RAG)** — upload documents (PDF/Word/PowerPoint/Excel/text/OCR'd images), semantic search, and GPT-5 Q&A with cited sources — reachable from chat too ("according to my notes...").
+- **Intelligent task prioritization** — GPT ranks pending tasks by urgency/importance with a one-line follow-up each, falling back to a deterministic due-date heuristic if GPT is unavailable.
 - **Executive Dashboard** — Next.js/React web UI (Chat, Voice, Email, Memory, Tasks, Calendar, Weather, AI Usage, Logs, Settings) backed by the same API.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/VOICE_PIPELINE.md](docs/VOICE_PIPELINE.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/CHANGELOG.md](docs/CHANGELOG.md).
@@ -95,3 +99,11 @@ dashboard on every push/PR to `main`.
 | GET | `/system/status` | Uptime, version, environment, model |
 | GET | `/system/usage` | Conversation/memory/task counts |
 | GET | `/system/logs?limit=...` | Tail of the application log |
+| GET | `/briefing` / `/briefing/voice` | Executive daily briefing (text / spoken audio) |
+| GET | `/calendar/today`, `/calendar/upcoming` | Calendar views |
+| POST/PATCH/DELETE | `/calendar/events[/{id}]` | Create/reschedule/cancel events |
+| GET | `/weather/current` | Current conditions (`{"configured": false}` if unset) |
+| POST | `/tasks/prioritize` | GPT-driven task prioritization |
+| POST/GET/DELETE | `/knowledge/documents[/{id}]` | Ingest / list / delete documents |
+| GET | `/knowledge/search?q=...` | Semantic search over documents |
+| POST | `/knowledge/ask` | RAG question answering with cited sources |

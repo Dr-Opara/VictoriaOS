@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from backend.security.audit import audit_log
 from backend.task.manager import TaskManager
+from backend.task.planner import TaskPlanner
 
 router = APIRouter(tags=["Tasks"])
 task_manager = TaskManager()
+task_planner = TaskPlanner(manager=task_manager)
 
 
 class CreateTaskRequest(BaseModel):
@@ -21,6 +24,7 @@ def _serialize(task) -> dict:
         "title": task.title,
         "description": task.description,
         "status": task.status,
+        "priority": task.priority,
         "due_at": task.due_at,
         "created_at": task.created_at,
         "completed_at": task.completed_at,
@@ -60,3 +64,16 @@ def delete_task(task_id: int):
 
     audit_log("task.delete", f"id={task_id}")
     return {"status": "deleted", "id": task_id}
+
+
+@router.post("/tasks/prioritize")
+async def prioritize_tasks():
+    """Run AI prioritization over all pending tasks and persist the result."""
+    plans = await run_in_threadpool(task_planner.prioritize)
+    audit_log("task.prioritize", f"count={len(plans)}")
+    return {
+        "plans": [
+            {"task_id": plan.task_id, "priority": plan.priority, "follow_up": plan.follow_up}
+            for plan in plans
+        ]
+    }

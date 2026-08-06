@@ -1,5 +1,61 @@
 # Changelog
 
+## Executive Intelligence Layer
+
+- **Daily Briefing** (`backend/core/briefing.py`, `GET /briefing`,
+  `GET /briefing/voice`): gathers real data from every subsystem (time,
+  local calendar, weather if configured, unread email count, pending/
+  overdue tasks, system status) and has GPT-5 turn it into a spoken-style
+  briefing with a personalized greeting. Each section degrades gracefully
+  and silently when its data source isn't configured (no calendar events,
+  no weather key, Yahoo Mail not configured) rather than erroring.
+- **Calendar** (`backend/integrations/calendar/`): a real, working local
+  calendar (`LocalCalendarProvider`, SQLite-backed) - create/reschedule/
+  cancel/list today's & upcoming events - behind the same
+  provider/manager pattern as email, so a `GoogleCalendarProvider` can
+  be dropped in later without changing call sites. Google Calendar itself
+  is a documented stub that raises a clear configuration error (needs a
+  registered OAuth app this environment doesn't have) rather than faking
+  sync. New `GET/POST/PATCH/DELETE /calendar/*` endpoints.
+- **Weather** (`backend/integrations/weather/`): OpenWeatherMap client,
+  gated behind `WEATHER_API_KEY`/`WEATHER_LOCATION` exactly like the other
+  optional integrations in this codebase - `GET /weather/current` reports
+  `{"configured": false}` rather than fabricating conditions when unset.
+- **Intelligent Task Manager** (`backend/task/planner.py`,
+  `POST /tasks/prioritize`): GPT-driven prioritization (high/medium/low +
+  a one-line follow-up per task) with a deterministic due-date-based
+  fallback when GPT is unavailable or returns unusable output. Added a
+  `priority` column to `Task` via a new lightweight additive-column
+  migration path in `migrations.py` (SQLite's `create_all` never alters
+  existing tables).
+- **Knowledge Engine / RAG** (`backend/knowledge/`): document ingestion
+  (`.txt/.md/.csv`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, and OCR for images
+  when the Tesseract binary is installed - a clear error otherwise, not
+  silently empty text) → chunking → OpenAI embeddings → brute-force cosine
+  similarity search → GPT-5 answer synthesis with cited sources. New
+  `Document`/`DocumentChunk` tables, `POST/GET/DELETE /knowledge/documents`,
+  `GET /knowledge/search`, `POST /knowledge/ask`.
+- **Long-term memory integration**: `VictoriaAssistant` now routes
+  "my documents/files/notes"-style questions to the Knowledge Engine (RAG)
+  the same way it already routes email-check requests to `EmailService` -
+  both write to `ConversationHistory` like every other turn.
+- Fixed a real bug found while testing: `TaskPlanner.prioritize()`'s
+  fallback path (GPT unavailable or returned unusable output) computed a
+  deterministic plan but never persisted it - `set_priority()` was only
+  called on the GPT-sourced path. Also fixed a naive/aware-datetime
+  comparison in the fallback's own due-date logic (SQLite drops tzinfo on
+  round-trip; every timestamp in this codebase is written as UTC, so a
+  naive value read back is safely treated as UTC).
+- Verified live against real APIs: created/listed/rescheduled/cancelled
+  calendar events; `POST /tasks/prioritize` against real pending tasks
+  (GPT correctly ranked an overdue-feeling task "high" with a concrete
+  follow-up); `GET /briefing` produced a real, coherent, time-aware
+  briefing pulling actual Yahoo Mail unread count and calendar state;
+  full document ingest → semantic search → RAG `ask()` round trip,
+  including via natural chat ("according to my notes, what is the wifi
+  password?") routed through `/think`. 30 new tests (84 total, all
+  passing); `ruff check .` clean repo-wide.
+
 ## Distributed Voice Pipeline (Mini PC + Raspberry Pi)
 
 - Mini PC: added `GET /voice/connect` (handshake), `WS /voice/stream`

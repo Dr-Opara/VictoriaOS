@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
     rate_limit_window_seconds: int = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 
+    google_calendar_client_id: str = os.getenv("GOOGLE_CALENDAR_CLIENT_ID", "")
+    google_calendar_client_secret: str = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET", "")
+
+    weather_api_key: str = os.getenv("WEATHER_API_KEY", "")
+    weather_location: str = os.getenv("WEATHER_LOCATION", "")
+
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

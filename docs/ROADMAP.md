@@ -63,15 +63,20 @@
 
 - [x] OpenAI integration
 - [x] AI Context Builder (history + preferences + tasks -> every GPT call)
-- [ ] Reasoning / planning beyond single-turn GPT calls
-- [ ] Proactive memory retrieval (semantic search / embeddings)
+- [x] Executive Daily Briefing (time, calendar, weather, email, tasks, system status -> GPT-5 -> spoken briefing)
+- [x] Knowledge Engine / RAG: document ingestion (txt/pdf/docx/pptx/xlsx/OCR), semantic search, GPT-5 Q&A with citations
+- [x] Long-term document memory reachable from chat ("according to my notes...")
+- [x] Intelligent task prioritization (GPT-driven, with a deterministic fallback)
+- [ ] Reasoning / planning beyond single-turn GPT calls (multi-step agentic workflows)
+- [ ] A real vector index (FAISS/pgvector) if the document corpus outgrows brute-force cosine search
 
 ## Productivity
 
 - [x] Yahoo Mail
-- [x] Tasks (create/complete/delete/list + due-task polling)
+- [x] Tasks (create/complete/delete/list/prioritize + due-task polling)
+- [x] Calendar (local, first-party - create/reschedule/cancel/today/upcoming)
+- [ ] Google Calendar / Microsoft Calendar sync (needs a registered OAuth app - stub raises a clear config error, not faked)
 - [ ] Gmail
-- [ ] Calendar
 - [ ] Contacts
 - [ ] Notes
 - [ ] Reminders (scheduled delivery, not just polling)

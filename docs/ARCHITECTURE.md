@@ -8,7 +8,8 @@ Voice / Text input
       v
 VictoriaAssistant.think()  (backend/core/assistant.py)
       |
-      +-- email intent? -> EmailService (Yahoo IMAP)
+      +-- email intent?     -> EmailService (Yahoo IMAP)
+      +-- knowledge intent? -> KnowledgeManager.ask() (RAG over documents)
       |
       v
 VictoriaOrchestrator.process()  (backend/core/orchestrator.py)
@@ -63,6 +64,64 @@ important dates, etc.) in the `UserPreference` table. It also parses
 `backend/task/manager.py` (`TaskManager`) supports create/complete/delete/list
 against the `Task` table, plus `due_tasks()` as a foundation for future
 scheduling (a periodic job can poll this to proactively remind Dr. Opara).
+`backend/task/planner.py` (`TaskPlanner`) is the GPT-driven layer on top:
+`prioritize()` asks GPT-5 to rank pending tasks and suggest a follow-up per
+task, falling back to a deterministic due-date heuristic if GPT is
+unavailable or returns something unparseable - either way the result is
+always persisted via `TaskManager.set_priority()`.
+
+## Calendar
+
+`backend/integrations/calendar/` follows the same provider/manager/service
+shape as email: `LocalCalendarProvider` (SQLite-backed, always available,
+no external credentials) does the real work; `GoogleCalendarProvider` is a
+documented stub that raises `CalendarConfigurationError` until a real
+Google Cloud OAuth app is registered. `CalendarService` is what callers
+(the briefing, the API, eventually voice commands) actually use, so
+swapping providers later doesn't touch call sites.
+
+## Weather
+
+`backend/integrations/weather/service.py` (`WeatherService`) wraps
+OpenWeatherMap, gated behind `WEATHER_API_KEY`/`WEATHER_LOCATION` - the
+same "gracefully disabled, never faked" pattern as wake-word detection and
+speaker verification elsewhere in this codebase.
+
+## Daily Briefing
+
+`backend/core/briefing.py` (`DailyBriefingService`) is the executive
+summary layer: `gather_context()` pulls real data from calendar, weather,
+email, tasks, and system settings (each failing/missing source is skipped,
+not faked), then `generate()` hands that context to GPT-5 to produce a
+short, spoken-style briefing with a personalized greeting.
+`generate_audio()` runs it through TTS. `GET /briefing` and
+`GET /briefing/voice` expose this.
+
+## Knowledge Engine (RAG)
+
+`backend/knowledge/`:
+
+- `documents.py` — text extraction by file type (.txt/.md/.csv, .pdf via
+  `pypdf`, .docx via `python-docx`, .pptx via `python-pptx`, .xlsx via
+  `openpyxl`, images via `pytesseract` OCR when the Tesseract binary is
+  actually installed on the host - a clear error otherwise) plus
+  fixed-size chunking with overlap.
+- `embeddings.py` — `EmbeddingService` wraps the OpenAI embeddings API
+  (`text-embedding-3-small` by default).
+- `search.py` — brute-force cosine-similarity ranking over every stored
+  chunk. Appropriate for a personal knowledge base's scale; a real vector
+  index (FAISS/pgvector) is the natural upgrade if the corpus grows large,
+  tracked in the roadmap rather than built preemptively.
+- `manager.py` — `KnowledgeManager` ties it together: `ingest()` (extract →
+  chunk → embed → store), `search()` (semantic search), `ask()`
+  (retrieval-augmented generation: search, then GPT-5 answers using only
+  the retrieved excerpts, citing filenames).
+- New tables: `Document`, `DocumentChunk` (embedding stored as a JSON
+  float array - no vector column type needed at this scale).
+- `VictoriaAssistant` routes "my documents/files/notes"-shaped questions
+  here automatically (see the request-flow diagram above) - this is
+  VictoriaOS's long-term document memory, distinct from but reachable
+  through the same conversational surface as `MemoryService`'s short facts.
 
 ## Voice pipeline
 

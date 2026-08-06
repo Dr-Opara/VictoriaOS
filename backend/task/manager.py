@@ -67,6 +67,21 @@ class TaskManager:
         finally:
             db.close()
 
+    def set_priority(self, task_id: int, priority: str) -> Task | None:
+        """Set a task's priority (``high``/``medium``/``low``)."""
+        db = session_scope()
+        try:
+            task = db.get(Task, task_id)
+            if task is None:
+                return None
+
+            task.priority = priority
+            db.commit()
+            db.refresh(task)
+            return task
+        finally:
+            db.close()
+
     def due_tasks(self, now: datetime | None = None) -> list[Task]:
         """Return pending tasks whose due date has passed, for future scheduling."""
         reference_time = now or datetime.now(timezone.utc)

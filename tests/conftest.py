@@ -22,13 +22,29 @@ def _clean_database():
     from sqlalchemy import delete
 
     from backend.database.database import session_scope
-    from backend.database.models import ConversationHistory, Memory, Task, UserPreference
+    from backend.database.models import (
+        CalendarEvent,
+        ConversationHistory,
+        Document,
+        DocumentChunk,
+        Memory,
+        Task,
+        UserPreference,
+    )
 
     yield
 
     db = session_scope()
     try:
-        for model in (ConversationHistory, Memory, Task, UserPreference):
+        for model in (
+            ConversationHistory,
+            Memory,
+            Task,
+            UserPreference,
+            CalendarEvent,
+            Document,
+            DocumentChunk,
+        ):
             db.execute(delete(model))
         db.commit()
     finally:
