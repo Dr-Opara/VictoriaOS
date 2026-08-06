@@ -1,5 +1,43 @@
 # Changelog
 
+## Dashboard Redesign — Dark Luxury / Glassmorphism
+
+- New original visual design (not modeled on any existing product):
+  near-black background with a radial cyan glow, glassmorphism panels
+  (`.glass`/`.glass-strong`), electric-cyan accent used for focus/active/
+  emphasis states. Implemented as CSS custom properties in `globals.css`
+  so the existing light/dark toggle keeps working against the same tokens.
+- New `AICore` component (`src/components/ai-core/`): an animated visual
+  with six distinct states (idle/listening/thinking/speaking/offline/
+  error), each with its own Framer Motion animation and color; respects
+  `prefers-reduced-motion`. Shown on Home (system status) and Assistant
+  (conversation state).
+- New shared components: `ToastProvider`/`useToast` (notification system)
+  and `LoadingState`/`ErrorState`/`EmptyState` (consistent loading/empty/
+  error handling), used across every page.
+- Restructured to exactly the seven requested pages: `/` (Home),
+  `/assistant`, `/memory`, `/knowledge` (new), `/tasks`, `/email`,
+  `/settings`. Voice, Calendar, Weather, AI Usage, and Logs are no longer
+  separate top-level pages - their real functionality was folded into
+  Home (calendar/weather widgets, executive briefing), Assistant (voice
+  input via the AI Core), and Settings (usage stats, live log tail) rather
+  than deleted or left as dead routes.
+- New Knowledge page: upload documents, ask questions (RAG), browse/delete
+  ingested documents - wired to the `/knowledge/*` endpoints added in the
+  Executive Intelligence layer below.
+- Tasks page: priority badges (color-coded by high/medium/low) and a
+  "Prioritize with AI" action wired to `POST /tasks/prioritize`.
+- Accessibility: a skip-to-content link, `aria-label`/`aria-pressed` on
+  icon-only and toggle controls, `prefers-reduced-motion` support, and
+  focus-visible rings using the accent color for keyboard navigation.
+- `src/lib/api.ts` extended with typed clients for calendar, weather,
+  briefing, and knowledge; optional `NEXT_PUBLIC_API_KEY` support for
+  deployments where the backend's `API_KEY` is set.
+- Verified: `npm run lint` and `npm run build` both clean, producing
+  exactly the seven expected routes; all 7 pages return 200 against a live
+  backend; CORS preflight verified to correctly allow the configured
+  dashboard origin and reject an unlisted one.
+
 ## Executive Intelligence Layer
 
 - **Daily Briefing** (`backend/core/briefing.py`, `GET /briefing`,

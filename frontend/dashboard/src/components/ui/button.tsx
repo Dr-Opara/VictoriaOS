@@ -5,16 +5,17 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-white text-black hover:bg-neutral-200",
-        secondary: "bg-neutral-800 text-neutral-100 hover:bg-neutral-700",
+        default:
+          "bg-[var(--accent)] text-[#03181b] hover:bg-[var(--accent-strong)] shadow-[0_0_20px_-4px_var(--accent)]",
+        secondary: "glass text-[var(--foreground)] hover:border-[var(--accent)]/50",
         outline:
-          "border border-neutral-800 bg-transparent text-neutral-100 hover:bg-neutral-900",
-        ghost: "bg-transparent text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100",
-        destructive: "bg-red-600/90 text-white hover:bg-red-600",
+          "border border-[var(--border)] bg-transparent text-[var(--foreground)] hover:border-[var(--accent)]/50 hover:bg-white/[0.03]",
+        ghost: "bg-transparent text-[var(--muted)] hover:bg-white/[0.04] hover:text-[var(--foreground)]",
+        destructive: "bg-[var(--danger)]/90 text-white hover:bg-[var(--danger)]",
       },
       size: {
         default: "h-9 px-4 py-2",

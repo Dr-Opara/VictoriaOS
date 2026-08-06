@@ -18,8 +18,8 @@ export default function EmailPage() {
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-50">Email</h1>
-          <p className="text-sm text-neutral-500">Yahoo Mail — unread messages</p>
+          <h1 className="text-xl font-semibold text-[var(--foreground)]">Email</h1>
+          <p className="text-sm text-[var(--muted)]">Yahoo Mail — unread messages</p>
         </div>
         {data && (
           <Badge variant={data.configured ? "success" : "warning"}>
@@ -28,15 +28,15 @@ export default function EmailPage() {
         )}
       </div>
 
-      {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
-      {isError && <p className="text-sm text-red-400">Could not reach the backend.</p>}
+      {isLoading && <p className="text-sm text-[var(--muted)]">Loading…</p>}
+      {isError && <p className="text-sm text-[var(--danger)]">Could not reach the backend.</p>}
       {data && !data.configured && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-[var(--muted)]">
           Set <code>YAHOO_EMAIL</code> and <code>YAHOO_APP_PASSWORD</code> in the backend
           environment to connect Yahoo Mail.
         </p>
       )}
-      {data?.error && <p className="text-sm text-red-400">{data.error}</p>}
+      {data?.error && <p className="text-sm text-[var(--danger)]">{data.error}</p>}
 
       <div className="space-y-3">
         {data?.messages.map((message, index) => (
@@ -44,19 +44,19 @@ export default function EmailPage() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardTitle>{message.subject}</CardTitle>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-[var(--muted)]">
                   {message.sender} &middot; {message.date}
                 </p>
               </div>
-              <Mail className="size-4 shrink-0 text-neutral-600" />
+              <Mail className="size-4 shrink-0 text-[var(--accent)]" />
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-neutral-400">{message.preview}</p>
+              <p className="text-sm text-[var(--muted)]">{message.preview}</p>
             </CardContent>
           </Card>
         ))}
         {data?.configured && data.messages.length === 0 && (
-          <p className="text-sm text-neutral-500">No unread messages. Inbox zero, Dr. Opara.</p>
+          <p className="text-sm text-[var(--muted)]">No unread messages. Inbox zero, Dr. Opara.</p>
         )}
       </div>
     </div>

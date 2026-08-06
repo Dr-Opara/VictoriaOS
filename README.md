@@ -19,7 +19,7 @@ Version: 1.0
 - **Calendar** — a real local calendar (create/reschedule/cancel/today/upcoming); Google/Microsoft sync is a documented stub pending OAuth credentials.
 - **Knowledge Engine (RAG)** — upload documents (PDF/Word/PowerPoint/Excel/text/OCR'd images), semantic search, and GPT-5 Q&A with cited sources — reachable from chat too ("according to my notes...").
 - **Intelligent task prioritization** — GPT ranks pending tasks by urgency/importance with a one-line follow-up each, falling back to a deterministic due-date heuristic if GPT is unavailable.
-- **Executive Dashboard** — Next.js/React web UI (Chat, Voice, Email, Memory, Tasks, Calendar, Weather, AI Usage, Logs, Settings) backed by the same API.
+- **Executive Dashboard** — an original dark-luxury/glassmorphism Next.js UI with an animated AI Core, seven pages (Home, Assistant, Memory, Knowledge, Tasks, Email, Settings), all backed by the same API.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/VOICE_PIPELINE.md](docs/VOICE_PIPELINE.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/CHANGELOG.md](docs/CHANGELOG.md).
 

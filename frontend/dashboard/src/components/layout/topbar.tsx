@@ -15,17 +15,17 @@ export function TopBar() {
   const online = !isError && data?.status === "online";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-black/30 px-4 md:px-6">
+    <header className="glass sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-2 md:hidden">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-xs font-semibold text-black">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent)] text-xs font-semibold text-[#03181b]">
           V
         </div>
-        <span className="text-sm font-medium text-neutral-100">Victoria</span>
+        <span className="text-sm font-medium text-[var(--foreground)]">Victoria</span>
       </div>
 
       <div className="hidden md:block" />
 
-      <div className="flex items-center gap-4 text-xs text-neutral-400">
+      <div className="flex items-center gap-4 text-xs text-[var(--muted)]">
         {data && (
           <span className="hidden sm:inline">
             {data.model} &middot; {data.environment}
@@ -33,7 +33,11 @@ export function TopBar() {
         )}
         <span className="flex items-center gap-1.5">
           <Circle
-            className={online ? "size-2 fill-emerald-400 text-emerald-400" : "size-2 fill-red-500 text-red-500"}
+            className={
+              online
+                ? "size-2 fill-[var(--success)] text-[var(--success)]"
+                : "size-2 fill-[var(--danger)] text-[var(--danger)]"
+            }
           />
           {online ? "Online" : "Offline"}
         </span>

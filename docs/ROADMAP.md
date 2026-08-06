@@ -3,12 +3,19 @@
 ## Executive Dashboard
 
 - [x] Next.js 16 / React 19 / TypeScript / Tailwind CSS 4 web app (`frontend/dashboard`)
-- [x] Dark mode by default, sidebar + mobile nav, TanStack Query polling for near-real-time data
-- [x] Chat, Voice (browser STT demo), Email, Memory, Tasks, AI Usage, Logs, Settings
-- [ ] Calendar / Weather pages are wired up but show a "not connected" state — they need a
-      calendar OAuth provider and a weather API key respectively before going live
-- [ ] True real-time updates (WebSocket/SSE) — currently polling every 5-30s per section
-- [ ] Authenticated dashboard access (currently assumes a trusted local network)
+- [x] Original dark-luxury/glassmorphism design system with a cyan accent, dark mode by
+      default, sidebar + mobile nav, TanStack Query polling for near-real-time data
+- [x] Animated AI Core component (idle/listening/thinking/speaking/offline/error)
+- [x] Seven pages: Home, Assistant, Memory, Knowledge, Tasks, Email, Settings
+- [x] Shared toast notifications + loading/empty/error states across every page
+- [x] Home shows real calendar/weather widgets and the executive briefing (weather still
+      reads "not connected" until `WEATHER_API_KEY` is set - not faked)
+- [ ] True real-time updates (WebSocket/SSE) — currently polling every 5-60s per section
+- [ ] Authenticated dashboard access (currently assumes a trusted local network; the
+      dashboard supports sending `X-API-Key` via `NEXT_PUBLIC_API_KEY` if the backend
+      requires one, but there's no dashboard-side login)
+- [ ] Full WCAG audit — current a11y work (skip link, aria labels, reduced-motion,
+      focus rings) is a solid start, not a certified pass
 
 ## Core Platform
 

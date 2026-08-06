@@ -257,22 +257,47 @@ pattern (Radix primitives + `class-variance-authority` + `tailwind-merge`)
 rather than depending on the `shadcn` CLI, since its interactive init flow
 isn't scriptable non-interactively.
 
+**Design system**: an original "dark luxury" theme — near-black background
+with a subtle radial cyan glow, glassmorphism panels (`.glass`/
+`.glass-strong` utility classes in `globals.css`: `backdrop-filter: blur()`
++ a hairline cyan-tinted border), and an electric-cyan accent
+(`--accent`/`--accent-strong`) used sparingly for focus states, active nav,
+and emphasis glows (`.glow-cyan`). All colors are CSS custom properties so
+the existing light/dark toggle (`next-themes`) still works — light mode
+swaps the same variables to a bright, high-contrast palette rather than
+being a separate theme. Not modeled on any specific existing product.
+
 - `src/lib/api.ts` — typed fetch client for the backend; `NEXT_PUBLIC_API_URL`
-  controls the target (defaults to `http://localhost:8000`).
+  controls the target (defaults to `http://localhost:8000`), and
+  `NEXT_PUBLIC_API_KEY` is sent as `X-API-Key` when the backend has one set.
 - `src/components/providers.tsx` — wraps the app in `next-themes`
-  (`defaultTheme="dark"`) and a `QueryClient`.
-- `src/components/layout/` — `Sidebar` (desktop), `MobileNav` (bottom bar on
-  small screens), `TopBar` (live online/offline status pill).
-- Pages: `/` (overview), `/chat`, `/voice`, `/email`, `/memory`, `/tasks`,
-  `/calendar`, `/weather`, `/usage`, `/logs`, `/settings`. Calendar and
-  Weather intentionally render a "not connected" state — there is no backend
-  integration for either yet (see roadmap), and faking data would be
-  misleading.
-- The `/voice` page uses the browser's native `SpeechRecognition` API for a
-  local, always-available demo of live transcription; it is a UI convenience
-  only. Production voice runs through the backend pipeline described above
-  (`POST /voice/command`), not the browser API.
-- "Real-time" updates are implemented as TanStack Query polling (5-30s
+  (`defaultTheme="dark"`), a `QueryClient`, and `ToastProvider`.
+- `src/components/ai-core/ai-core.tsx` — the animated AI Core: an original
+  concentric-rings-plus-waveform visual (not modeled on any specific
+  existing assistant UI) with six distinct Framer Motion states (`idle`,
+  `listening`, `thinking`, `speaking`, `offline`, `error`), each with its
+  own animation/color; respects `prefers-reduced-motion`.
+- `src/components/ui/toast.tsx`, `state.tsx` — shared notification system
+  and `LoadingState`/`ErrorState`/`EmptyState` components reused across
+  every page for consistent loading/empty/error handling.
+- `src/components/layout/` — `Sidebar` (desktop, glass panel), `MobileNav`
+  (bottom bar, a curated 5-item subset on small screens), `TopBar` (live
+  online/offline status pill). A skip-to-content link in the root layout
+  covers keyboard/screen-reader navigation.
+- Pages (exactly seven, per spec): `/` (Home — briefing, calendar, weather,
+  and stats widgets), `/assistant` (chat merged with the AI Core and a
+  browser-`SpeechRecognition` voice-input toggle), `/memory`, `/knowledge`
+  (new — document upload, semantic search, RAG Q&A), `/tasks` (now with
+  priority badges and a "Prioritize with AI" action), `/email`, `/settings`
+  (now also folds in AI usage stats and a live log tail, previously
+  separate pages). Calendar/weather/voice/usage/logs are no longer
+  top-level routes — their functionality was consolidated into Home,
+  Assistant, and Settings rather than left as dead pages.
+- Production voice still runs through the backend pipeline
+  (`POST /voice/command`, `WS /voice/stream`); the Assistant page's
+  microphone toggle is a browser-only convenience for dictating chat input,
+  not a second voice pipeline.
+- "Real-time" updates are implemented as TanStack Query polling (5-60s
   intervals depending on the page) rather than WebSockets/SSE — a
   deliberately simpler choice for v1 that can be swapped for a push-based
   transport later without changing the page components' data-fetching shape.

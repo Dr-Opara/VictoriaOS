@@ -36,8 +36,8 @@ export default function MemoryPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
-      <h1 className="text-xl font-semibold text-neutral-50">Memory</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <h1 className="text-xl font-semibold text-[var(--foreground)]">Memory</h1>
+      <p className="mb-6 text-sm text-[var(--muted)]">
         Everything Victoria remembers about you and your preferences.
       </p>
 
@@ -66,8 +66,8 @@ export default function MemoryPage() {
           <Card key={`${memory.key}-${memory.created_at}`}>
             <CardContent className="flex items-center justify-between pt-4">
               <div>
-                <p className="text-sm font-medium text-neutral-100">{memory.key}</p>
-                <p className="text-sm text-neutral-400">{memory.value}</p>
+                <p className="text-sm font-medium text-[var(--foreground)]">{memory.key}</p>
+                <p className="text-sm text-[var(--muted)]">{memory.value}</p>
               </div>
               <Button
                 variant="ghost"
@@ -81,7 +81,7 @@ export default function MemoryPage() {
           </Card>
         ))}
         {memories.data?.memories.length === 0 && (
-          <p className="text-sm text-neutral-500">Nothing remembered yet.</p>
+          <p className="text-sm text-[var(--muted)]">Nothing remembered yet.</p>
         )}
       </div>
     </div>
