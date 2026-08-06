@@ -66,31 +66,59 @@ scheduling (a periodic job can poll this to proactively remind Dr. Opara).
 
 ## Voice pipeline
 
-`backend/voice/`:
+VictoriaOS's voice pipeline is split across two machines — see
+[docs/VOICE_PIPELINE.md](VOICE_PIPELINE.md) for the full protocol and
+sequence diagram. Summary:
+
+**Mini PC** (`backend/voice/`) — all AI/audio-processing capability lives
+here; the Pi never calls OpenAI directly:
 
 - `vad.py` — numpy energy-based voice activity detection: speech/silence
   detection and end-pointing (used to detect "the user stopped talking" and
   to detect interruptions while Victoria is speaking).
 - `wakeword.py` — detects "Hello Victoria" in transcribed text.
 - `speech.py` — STT via the OpenAI transcription API.
-- `tts.py` — TTS via the OpenAI audio API (`synthesize`/`stream`).
-- `speaker.py` — restricts responses to Dr. Opara. Text-based `authenticate()`
-  is wired up; audio-based `verify_audio()` is an intentional stub — real
+- `tts.py` — TTS via the OpenAI audio API (`synthesize`/`stream`); supports
+  `response_format="wav"` for codec-free playback on the Pi.
+- `speaker.py` — restricts responses to Dr. Opara. `verify_audio()` is fully
+  wired into the pipeline but gated behind `is_enrolled()`: real
   voice-biometric verification needs an enrolled voiceprint and an embedding
   model, which requires actual enrollment audio from Dr. Opara to build
-  safely and is not something to fake.
-- `engine.py` — `VoiceEngine` ties it together: VAD -> STT -> wake word / an
-  already-awake `ConversationSession` -> speaker check -> `VictoriaAssistant`
+  safely, so it's skipped (not faked) until one exists.
+- `engine.py` — `VoiceEngine` ties it together: VAD -> speaker check -> STT
+  -> wake word / an already-awake `ConversationSession` -> `VictoriaAssistant`
   (i.e. the same Context Builder path as text) -> TTS. `ConversationSession`
   tracks per-session state (`sleeping` / `awake` / `speaking`) so a user can
   have a multi-turn conversation without repeating the wake word, times out
-  after 15s of silence, and supports interruption (new speech while Victoria
-  is speaking cancels playback state).
+  after 15s of silence, and supports interruption.
+- `backend/api/voice.py` exposes this over HTTP/WS: `GET /voice/connect`
+  (handshake), `WS /voice/stream` (chunked audio in, JSON result + WAV audio
+  out, end-of-turn framed), `POST /voice/transcribe` (STT only),
+  `POST /voice/respond` (text in, spoken reply out — no wake-word gate).
 
-`raspberry_pi/` holds the on-device microphone/speaker integration
-points for the ReSpeaker array; those files are placeholders until real
-hardware is wired up and tested on-device — that work cannot be validated
-in this environment.
+**Raspberry Pi** (`raspberry_pi/`) — the "voice node": microphone capture,
+local wake-word detection (or VAD fallback), and speaker playback, talking
+to the Mini PC exclusively through `/voice/*`:
+
+- `audio/devices.py` — runtime device discovery/selection by name hint,
+  never a hardcoded index.
+- `audio/microphone.py`, `audio/speaker.py` — capture/playback via
+  `sounddevice`.
+- `audio/vad.py` — a small, intentionally independent re-implementation of
+  the same energy-VAD technique (the Pi's venv must not depend on the
+  Mini PC's full backend package).
+- `audio/diagnostics.py` — device report + live input-level check
+  (`python -m raspberry_pi.audio.diagnostics`).
+- `wakeword/` — pluggable `WakeWordEngine` interface;
+  `OpenWakeWordEngine` loads a trained model if `WAKE_WORD_MODEL_PATH` is
+  configured, otherwise `NullWakeWordEngine` disables local detection and
+  the node falls back to VAD-triggered turns gated server-side.
+- `client/connection.py` — `MiniPCClient` (REST) and `VoiceStreamClient`
+  (WS, sync client, reconnect-with-backoff).
+- `client/voice_node.py` — the orchestrator; run directly or via the
+  provided systemd unit (`systemd/victoria-voice.service`).
+- `health/monitor.py` — heartbeat polling of the Mini PC and local
+  mic/speaker availability, logging state transitions.
 
 ## Logging
 

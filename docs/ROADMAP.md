@@ -40,13 +40,24 @@
 
 ## Voice
 
-- [x] Wake word ("Hello Victoria")
-- [x] Voice activity detection / silence detection / interruption handling
-- [x] Speech-to-text (OpenAI)
-- [x] Text-to-speech (OpenAI)
+- [x] Wake word ("Hello Victoria") — text-gate on the Mini PC (`backend/voice/wakeword.py`);
+      framework + graceful fallback for local Pi-side detection (`raspberry_pi/wakeword/`)
+- [x] Voice activity detection / silence detection / interruption handling (both sides)
+- [x] Speech-to-text (OpenAI), Text-to-speech (OpenAI, WAV for codec-free Pi playback)
 - [x] Conversation mode (multi-turn without repeating the wake word)
-- [ ] Speaker verification (needs enrolled voiceprint + embedding model)
-- [ ] On-device ReSpeaker microphone integration (needs real hardware)
+- [x] Mini PC <-> Raspberry Pi distributed pipeline: `/voice/connect`, `/voice/stream`
+      (WebSocket, chunked audio + end-of-turn framing), `/voice/transcribe`, `/voice/respond`
+- [x] Pi-side reconnect-with-backoff (HTTP handshake + WebSocket) and health heartbeat
+- [x] Speaker verification interface fully wired into the pipeline, gated behind
+      `is_enrolled()` (see Core Platform below for what's missing)
+- [ ] A trained "Hello Victoria" openWakeWord model — needs real recorded enrollment audio;
+      until then the Pi runs in VAD-fallback mode (see `docs/VOICE_PIPELINE.md`)
+- [ ] Real speaker (voice biometric) verification — needs an enrolled voiceprint + embedding
+      model + real enrollment audio from Dr. Opara
+- [ ] Actual ReSpeaker/USB mic capture verified on Raspberry Pi hardware — device discovery,
+      diagnostics, VAD, and reconnect logic are all real and tested against real audio
+      hardware on the Mini PC's own machine, but not yet run on a physical Pi
+- [ ] Multi-microphone array beamforming / noise suppression tuning
 
 ## Intelligence
 

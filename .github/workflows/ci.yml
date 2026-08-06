@@ -20,10 +20,12 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r raspberry_pi/requirements.txt
 
       - name: Ruff lint
-        run: ruff check backend
+        run: ruff check backend raspberry_pi
 
       - name: Run tests
         env:

@@ -128,8 +128,13 @@ class VoiceEngine:
 
         return {"status": "awake", "message": result["response"]}
 
-    def process_audio(self, audio: bytes, session_id: str = "voice-default") -> dict[str, Any]:
-        """Run the full audio pipeline: VAD -> STT -> wake/auth -> reply audio."""
+    def process_audio(
+        self,
+        audio: bytes,
+        session_id: str = "voice-default",
+        response_format: str = "mp3",
+    ) -> dict[str, Any]:
+        """Run the full audio pipeline: VAD -> speaker check -> STT -> wake/auth -> reply audio."""
         session = self._session(session_id)
 
         if not self.vad.is_speech(audio):
@@ -138,12 +143,19 @@ class VoiceEngine:
         if session.state == ConversationState.SPEAKING:
             session.interrupt()
 
+        if self.auth.is_enrolled() and not self.auth.verify_audio(audio):
+            return {
+                "status": "denied",
+                "message": "I am only programmed to respond to Dr Opara.",
+            }
+
         text = self.speech.transcribe(audio)
         if not text:
             return {"status": "unrecognized"}
 
         result = self.process(text, session_id=session_id)
         if result.get("status") == "awake":
-            result["audio"] = self.tts.synthesize(result["message"])
+            result["transcript"] = text
+            result["audio"] = self.tts.synthesize(result["message"], response_format=response_format)
 
         return result

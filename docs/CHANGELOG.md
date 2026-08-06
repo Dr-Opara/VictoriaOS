@@ -1,5 +1,52 @@
 # Changelog
 
+## Distributed Voice Pipeline (Mini PC + Raspberry Pi)
+
+- Mini PC: added `GET /voice/connect` (handshake), `WS /voice/stream`
+  (chunked audio in, JSON result + WAV audio out, `end_of_turn` framing,
+  ping/pong), `POST /voice/transcribe`, `POST /voice/respond`
+  (`backend/api/voice.py`). WS endpoint enforces `API_KEY` manually since
+  `BaseHTTPMiddleware` doesn't run for websocket scope.
+- `VoiceEngine.process_audio()` now also runs speaker verification (gated
+  behind `is_enrolled()`) and accepts a `response_format` so Pi-facing
+  responses come back as WAV (codec-free playback) while file-based
+  callers keep MP3.
+- `TextToSpeech.synthesize()` takes a `response_format` parameter; default
+  voice changed to `shimmer` (natural female voice per spec).
+- New `raspberry_pi/` package (previously empty stub files): `audio/`
+  (device discovery/selection by name hint - never a hardcoded index -
+  microphone capture, speaker playback with interrupt support, energy VAD,
+  diagnostics CLI), `wakeword/` (pluggable `WakeWordEngine`; real
+  openWakeWord backend + explicit `NullWakeWordEngine` fallback when no
+  trained model is configured), `client/` (`MiniPCClient` REST wrapper,
+  `VoiceStreamClient` sync WS client with reconnect-with-backoff,
+  `VoiceNode` orchestrator), `health/` (heartbeat monitor for Mini PC/mic/
+  speaker availability), plus `config.py`, `logging_config.py`,
+  `requirements.txt`, and a systemd unit
+  (`systemd/victoria-voice.service`).
+- Honest scope limits, not faked: no pretrained "Hello Victoria" wake-word
+  model exists (openWakeWord ships generic phrases only - training one
+  needs real recorded audio), so the Pi runs in VAD-fallback mode by
+  default and the Mini PC's existing text-based wake-word gate (after STT)
+  is the real gatekeeper until a model is trained. Speaker verification
+  was already gated behind `is_enrolled()` from Sprint 3 and is now fully
+  wired into the audio pipeline rather than bypassed.
+- Added `docs/VOICE_PIPELINE.md` (protocol, sequence, what's verified vs.
+  hardware-dependent) and `docs/DEPLOYMENT.md` (Mini PC + Pi setup steps).
+- Verified for real: audio device discovery/selection against this
+  machine's actual PortAudio devices (12 inputs, 28 outputs detected);
+  `diagnostics.py` recorded real mic input and correctly flagged a
+  near-silent level; a full TTS(WAV)->STT->wake-word->GPT-5 round trip
+  using real synthesized speech ("Hello Victoria, what is on my calendar
+  today?" transcribed back verbatim); the WS `/voice/stream` handshake,
+  ping/pong, and end-of-turn round trip against a live server. 26 new
+  tests (config, VAD/endpointing, device selection with a fake backend,
+  wake-word factory/fallback, Mini PC client with mocked HTTP/WS, health
+  monitor) - 80 total, all passing; `ruff check .` clean repo-wide.
+- Not verified (documented, not faked): real capture/playback on actual
+  Raspberry Pi hardware, a trained wake-word model, real voice biometric
+  verification.
+
 ## Sprint 14/15 — Security + Production
 
 - Added `backend/security/`: `ApiKeyMiddleware` (shared-secret auth via

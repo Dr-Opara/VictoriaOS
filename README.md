@@ -14,10 +14,10 @@ Version: 1.0
 - **Executive assistant** — tracks tasks, recalls preferences ("remember my favorite airline is United"), and answers "what do you remember about me?".
 - **Context-aware GPT** — every request flows through the AI Context Builder, so replies are grounded in prior conversation, preferences, and open tasks.
 - **Yahoo Mail** — reads and summarizes unread mail.
-- **Voice pipeline** — wake word ("Hello Victoria"), voice activity detection, speech-to-text/text-to-speech, speaker gating, and multi-turn conversation mode.
+- **Voice pipeline** — wake word ("Hello Victoria"), voice activity detection, speech-to-text/text-to-speech, speaker gating, and multi-turn conversation mode. Runs across two machines: a Mini PC brain and a Raspberry Pi voice node — see [docs/VOICE_PIPELINE.md](docs/VOICE_PIPELINE.md).
 - **Executive Dashboard** — Next.js/React web UI (Chat, Voice, Email, Memory, Tasks, Calendar, Weather, AI Usage, Logs, Settings) backed by the same API.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/CHANGELOG.md](docs/CHANGELOG.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/VOICE_PIPELINE.md](docs/VOICE_PIPELINE.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## Running locally
 
@@ -86,7 +86,11 @@ dashboard on every push/PR to `main`.
 | POST | `/tasks` | Create a task |
 | POST | `/tasks/{id}/complete` | Complete a task |
 | DELETE | `/tasks/{id}` | Delete a task |
-| POST | `/voice/command` | Full voice pipeline (audio in, audio out) |
+| POST | `/voice/command` | Full voice pipeline (audio file in, audio out) |
+| GET | `/voice/connect` | Voice-node handshake: session id + stream params |
+| WS | `/voice/stream` | Duplex streaming: chunked audio in, JSON result + WAV out |
+| POST | `/voice/transcribe` | Audio in, transcript only |
+| POST | `/voice/respond` | Text in, spoken reply out (no wake-word gate) |
 | GET | `/email/unread` | Unread Yahoo Mail messages |
 | GET | `/system/status` | Uptime, version, environment, model |
 | GET | `/system/usage` | Conversation/memory/task counts |

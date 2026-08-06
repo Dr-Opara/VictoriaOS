@@ -1,0 +1,13 @@
+# Raspberry Pi voice node dependencies.
+# Deliberately minimal - this runs on the edge device and must not depend on
+# the Mini PC's backend package (FastAPI, SQLAlchemy, OpenAI SDK, etc.).
+
+numpy>=1.26,<3
+sounddevice>=0.4.6,<1
+websockets>=12,<17
+requests>=2.31,<3
+
+# Optional: local always-listening wake-word detection. Without this
+# installed (or without a trained model configured), the voice node falls
+# back to VAD-triggered recording - see raspberry_pi/wakeword/null_engine.py.
+openwakeword>=0.6,<1

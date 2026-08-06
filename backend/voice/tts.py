@@ -16,7 +16,7 @@ class TextToSpeech:
     bytes for the voice pipeline.
     """
 
-    def __init__(self, model: str = "gpt-4o-mini-tts", voice: str = "alloy") -> None:
+    def __init__(self, model: str = "gpt-4o-mini-tts", voice: str = "shimmer") -> None:
         self.settings = get_settings()
         self.model = model
         self.voice = voice
@@ -32,13 +32,21 @@ class TextToSpeech:
         """Print what Victoria would say (used by lightweight/text flows)."""
         print(f"Victoria: {text}")
 
-    def synthesize(self, text: str) -> bytes:
-        """Return synthesized speech audio (MP3 bytes) for ``text``."""
+    def synthesize(self, text: str, response_format: str = "mp3") -> bytes:
+        """Return synthesized speech audio for ``text``.
+
+        ``response_format`` is one of the OpenAI TTS formats (``mp3``,
+        ``wav``, ``opus``, ``aac``, ``flac``, ``pcm``). Callers that need to
+        play audio without a codec library (e.g. the Raspberry Pi voice
+        node) should request ``wav``, which any stdlib ``wave`` reader can
+        decode directly.
+        """
         try:
             response = self.client.audio.speech.create(
                 model=self.model,
                 voice=self.voice,
                 input=text,
+                response_format=response_format,
             )
             return response.read()
         except Exception:

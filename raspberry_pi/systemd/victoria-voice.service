@@ -1,0 +1,18 @@
+[Unit]
+Description=VictoriaOS Voice Node
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/VictoriaOS
+EnvironmentFile=/home/pi/VictoriaOS/raspberry_pi/.env
+ExecStart=/home/pi/VictoriaOS/.venv-pi/bin/python -m raspberry_pi.client.voice_node
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/pi/VictoriaOS/logs/voice_node.stdout.log
+StandardError=append:/home/pi/VictoriaOS/logs/voice_node.stderr.log
+
+[Install]
+WantedBy=multi-user.target
