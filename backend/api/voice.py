@@ -14,7 +14,7 @@ from backend.config.settings import get_settings
 from backend.core.logger import logger
 from backend.voice.engine import VoiceEngine
 from backend.voice.speech import SpeechService
-from backend.voice.tts import TextToSpeech
+from backend.voice.tts import SupportedAudioFormat, TextToSpeech
 
 router = APIRouter(prefix="/voice", tags=["Voice"])
 voice_engine = VoiceEngine()
@@ -80,7 +80,7 @@ class RespondRequest(BaseModel):
     text: str
     session_id: str = "voice-default"
     include_audio: bool = True
-    audio_format: str = "wav"
+    audio_format: SupportedAudioFormat = "wav"
 
 
 class RespondResponse(BaseModel):
@@ -175,7 +175,11 @@ async def voice_stream(websocket: WebSocket):
 
                 start_time = time.monotonic()
                 result = await run_in_threadpool(
-                    voice_engine.process_audio, utterance, session_id, "wav"
+                    voice_engine.process_audio,
+                    utterance,
+                    session_id,
+                    "wav",
+                    "pcm",
                 )
                 elapsed_ms = (time.monotonic() - start_time) * 1000
 

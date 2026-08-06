@@ -7,9 +7,10 @@ from typing import Any
 
 from backend.core.assistant import VictoriaAssistant
 from backend.core.logger import logger
+from backend.voice.audio_format import is_plausible_speech_length, pcm_to_wav
 from backend.voice.speaker import SpeakerAuthenticator
-from backend.voice.speech import SpeechService
-from backend.voice.tts import TextToSpeech
+from backend.voice.speech import SpeechService, TranscriptionError
+from backend.voice.tts import SupportedAudioFormat, TextToSpeech
 from backend.voice.vad import VoiceActivityDetector
 from backend.voice.wakeword import WakeWordDetector
 
@@ -132,13 +133,31 @@ class VoiceEngine:
         self,
         audio: bytes,
         session_id: str = "voice-default",
-        response_format: str = "mp3",
+        response_format: SupportedAudioFormat = "mp3",
+        input_format: str = "file",
     ) -> dict[str, Any]:
-        """Run the full audio pipeline: VAD -> speaker check -> STT -> wake/auth -> reply audio."""
+        """Run the full audio pipeline: VAD -> speaker check -> STT -> wake/auth -> reply audio.
+
+        ``input_format`` distinguishes raw headerless PCM (``"pcm"``, as
+        streamed from ``WS /voice/stream``) from an already-valid audio
+        file (``"file"``, as uploaded to ``POST /voice/command`` - has a
+        real container/header, possibly compressed). STT providers need a
+        real container, so PCM is wrapped into a WAV before transcription.
+
+        The energy-based VAD only makes sense on raw PCM samples - running
+        it on an arbitrary file's raw bytes (a WAV header, MP3 frames, ...)
+        would misinterpret header/container bytes as audio energy, so it's
+        skipped for ``"file"`` input. Silence/no-speech in that case is
+        instead caught by STT returning an empty transcript below.
+        """
         session = self._session(session_id)
 
-        if not self.vad.is_speech(audio):
-            return {"status": "silence"}
+        if input_format == "pcm":
+            if not self.vad.is_speech(audio):
+                return {"status": "silence"}
+            if not is_plausible_speech_length(audio):
+                logger.info("Discarding implausibly short PCM clip (%d bytes).", len(audio))
+                return {"status": "silence"}
 
         if session.state == ConversationState.SPEAKING:
             session.interrupt()
@@ -149,7 +168,16 @@ class VoiceEngine:
                 "message": "I am only programmed to respond to Dr Opara.",
             }
 
-        text = self.speech.transcribe(audio)
+        transcribable_audio = pcm_to_wav(audio) if input_format == "pcm" else audio
+
+        try:
+            text = self.speech.transcribe(transcribable_audio)
+        except TranscriptionError:
+            return {
+                "status": "error",
+                "message": "I couldn't understand that - the speech-to-text service failed.",
+            }
+
         if not text:
             return {"status": "unrecognized"}
 

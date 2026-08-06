@@ -8,11 +8,16 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/VictoriaOS
 EnvironmentFile=/home/pi/VictoriaOS/raspberry_pi/.env
+Environment=PYTHONUNBUFFERED=1
+# PUSH_TO_TALK must stay unset/false here: this mode has no interactive
+# stdin under systemd (see raspberry_pi/client/push_to_talk.py) and will
+# just log a warning and never trigger a turn.
 ExecStart=/home/pi/VictoriaOS/.venv-pi/bin/python -m raspberry_pi.client.voice_node
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:/home/pi/VictoriaOS/logs/voice_node.stdout.log
-StandardError=append:/home/pi/VictoriaOS/logs/voice_node.stderr.log
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=victoria-voice
 
 [Install]
 WantedBy=multi-user.target

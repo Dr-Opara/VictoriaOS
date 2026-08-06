@@ -69,6 +69,17 @@ class PiConfig:
         default_factory=lambda: _bool_env("SPEAKER_VERIFICATION_ENABLED", False)
     )
 
+    # Temporary testing fallback (see raspberry_pi/client/push_to_talk.py):
+    # press Enter to start a turn instead of relying on wake-word/VAD
+    # triggering. Requires an interactive terminal - not for systemd use.
+    push_to_talk: bool = field(default_factory=lambda: _bool_env("PUSH_TO_TALK", False))
+
+    # How long to wait for the Mini PC to respond to a single request before
+    # treating it as unreachable (distinct from the WebSocket connect timeout).
+    request_timeout_seconds: float = field(
+        default_factory=lambda: float(os.getenv("REQUEST_TIMEOUT_SECONDS", "30"))
+    )
+
     log_dir: str = field(default_factory=lambda: os.getenv("VOICE_NODE_LOG_DIR", "logs"))
 
 

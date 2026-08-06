@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Literal, get_args
 
 from openai import OpenAI
 
 from backend.config.settings import get_settings
 from backend.core.logger import logger
+
+SupportedAudioFormat = Literal["mp3", "opus", "aac", "flac", "wav", "pcm"]
+SUPPORTED_AUDIO_FORMATS: tuple[str, ...] = get_args(SupportedAudioFormat)
 
 
 class TextToSpeech:
@@ -32,7 +36,7 @@ class TextToSpeech:
         """Print what Victoria would say (used by lightweight/text flows)."""
         print(f"Victoria: {text}")
 
-    def synthesize(self, text: str, response_format: str = "mp3") -> bytes:
+    def synthesize(self, text: str, response_format: SupportedAudioFormat = "mp3") -> bytes:
         """Return synthesized speech audio for ``text``.
 
         ``response_format`` is one of the OpenAI TTS formats (``mp3``,
@@ -41,6 +45,12 @@ class TextToSpeech:
         node) should request ``wav``, which any stdlib ``wave`` reader can
         decode directly.
         """
+        if response_format not in SUPPORTED_AUDIO_FORMATS:
+            raise ValueError(
+                f"Unsupported audio format {response_format!r}. "
+                f"Supported formats: {', '.join(SUPPORTED_AUDIO_FORMATS)}"
+            )
+
         try:
             response = self.client.audio.speech.create(
                 model=self.model,

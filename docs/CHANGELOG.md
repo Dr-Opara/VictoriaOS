@@ -1,5 +1,78 @@
 # Changelog
 
+## v0.2 Runtime Release (`release/v0.2-runtime`)
+
+Scope: `backend/`, `raspberry_pi/`, `tests/`, Docker/runtime deployment
+files only. No new integrations, no login/auth, `frontend/` untouched. See
+`docs/PROJECT_STATUS.md` for the full acceptance-criteria breakdown.
+
+**Real bug fixed**: `WS /voice/stream` sent raw headerless PCM straight to
+`VoiceEngine.process_audio()` without marking it as such, so it would have
+gone to OpenAI's transcription API without a valid audio container -
+untested and would not have worked on real hardware. Fixed with
+`backend/voice/audio_format.py` (PCM→WAV wrapping, matching what
+`GET /voice/connect` advertises) and a new `input_format` parameter on
+`process_audio()`. Also fixed: the energy-based VAD was being run on
+arbitrary uploaded file bytes (`/voice/command`) as if they were raw PCM,
+which misinterprets WAV headers/compressed audio as sample data - VAD now
+only runs on genuinely raw PCM (the WS path); file uploads rely on STT
+returning an empty transcript to detect silence instead.
+
+**Audio subsystem** (`raspberry_pi/audio/`): `Microphone`/`Speaker` now
+raise `MicrophoneDisconnectedError`/`SpeakerDisconnectedError` when the
+underlying PortAudio stream stops unexpectedly (unplugged device, driver
+crash) instead of hanging forever or silently doing nothing - the voice
+node catches these specifically, logs clearly, and retries device
+selection with backoff. Added ambient-noise calibration
+(`diagnostics.py --calibrate-noise`) that recommends a `VAD_ENERGY_THRESHOLD`
+for the room's actual background noise.
+
+**Wake word**: added a push-to-talk test mode (`PUSH_TO_TALK=true`,
+`raspberry_pi/client/push_to_talk.py`) - press Enter in an interactive
+terminal to start a turn, for exercising the full pipeline on hardware
+without a trained wake-word model. Startup logging now clearly states
+which of the three listening strategies (local wake word / push-to-talk /
+VAD-fallback) is active and why.
+
+**Playback**: `Speaker` now prevents overlapping playback (starting a new
+clip stops any clip already playing) and supports interruption - the
+voice node plays replies non-blocking and stops playback immediately if
+the VAD detects the user talking during it, then drains stale buffered
+audio before the next turn.
+
+**Mini PC runtime**: added `scripts/start_mini_pc.ps1` - one PowerShell
+command that validates required env vars (presence only, never prints
+values), checks/offers to create a Windows Firewall rule, prints the
+LAN address(es) for the Pi's `MINI_PC_URL`, and starts uvicorn bound to
+`0.0.0.0`.
+
+**Pi systemd service**: unit file now logs to the systemd journal
+(`journalctl -u victoria-voice.service`) instead of raw append files, sets
+`PYTHONUNBUFFERED=1`, and documents install/start/stop/restart/status/log
+commands in `docs/DEPLOYMENT.md`.
+
+**Testing**: added `tests/test_voice_api.py` (12 tests covering
+`/voice/connect`, `/voice/transcribe`, `/voice/respond`, `/voice/command`,
+and the WS stream's connect/ping-pong/end-of-turn/API-key-rejection
+behavior, all with mocked STT/GPT/TTS so they don't require live OpenAI
+access) and `tests/raspberry_pi/test_diagnostics.py` (7 tests covering
+input-level measurement, noise calibration, and graceful backend-
+unavailable/no-devices reporting via a fake `sounddevice` backend). 103
+tests total, all passing. `ruff check` clean; `mypy` clean on
+`backend/voice`, `backend/api/voice.py`, and `raspberry_pi` (pre-existing,
+unrelated findings in `backend/integrations/email/yahoo.py` left
+untouched, out of scope). `docker compose config --quiet` validates the
+compose file without a daemon.
+
+**Docs**: rewrote `docs/DEPLOYMENT.md` (PowerShell launch command,
+firewall/LAN binding, mic/speaker/noise-calibration setup, systemd
+commands, a troubleshooting table), updated `docs/VOICE_PIPELINE.md`
+(three listening strategies, disconnect handling, interruption, honest
+verified-vs-hardware-blocked status), and added `docs/PROJECT_STATUS.md`
+(acceptance-criteria-by-criteria status: passed / ready for hardware
+validation / blocked by missing device or model - never claiming untested
+hardware functionality as passing).
+
 ## Dashboard Redesign — Dark Luxury / Glassmorphism
 
 - New original visual design (not modeled on any existing product):

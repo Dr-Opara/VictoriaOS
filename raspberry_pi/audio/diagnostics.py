@@ -35,6 +35,8 @@ class DiagnosticsReport:
     selected_input: str | None
     selected_output: str | None
     input_peak_level: float | None
+    ambient_noise_rms: float | None
+    recommended_vad_threshold: int | None
     warnings: list[str]
 
 
@@ -53,8 +55,42 @@ def measure_input_level(device_index: int, sample_rate: int = 16000, duration_se
     return peak
 
 
-def run_diagnostics(measure_level: bool = True) -> DiagnosticsReport:
-    """Run a full audio subsystem diagnostic sweep."""
+def calibrate_noise_floor(
+    device_index: int,
+    sample_rate: int = 16000,
+    duration_seconds: float = 2.0,
+    sd_module=None,
+) -> tuple[float, int]:
+    """Record ambient (room) noise and recommend a VAD energy threshold.
+
+    Returns ``(ambient_rms, recommended_threshold)``. The recommendation is
+    the ambient RMS with a safety margin, clamped to a sane range - it's a
+    starting point for ``VAD_ENERGY_THRESHOLD``, not a guarantee against
+    every noisy environment (see docs/VOICE_PIPELINE.md).
+    """
+    sd = sd_module or get_sounddevice_backend()
+    recording = sd.rec(
+        int(duration_seconds * sample_rate),
+        samplerate=sample_rate,
+        channels=1,
+        dtype="int16",
+        device=device_index,
+    )
+    sd.wait()
+
+    samples = recording.astype(np.float64)
+    ambient_rms = float(np.sqrt(np.mean(np.square(samples))))
+    recommended = int(min(max(ambient_rms * 4, 200), 4000))
+    return ambient_rms, recommended
+
+
+def run_diagnostics(measure_level: bool = True, calibrate_noise: bool = False) -> DiagnosticsReport:
+    """Run a full audio subsystem diagnostic sweep.
+
+    ``calibrate_noise`` additionally records a couple of seconds of ambient
+    room noise and recommends a ``VAD_ENERGY_THRESHOLD`` - keep the room at
+    its normal background noise level (not silent) while this runs.
+    """
     config = get_config()
     warnings: list[str] = []
 
@@ -69,6 +105,8 @@ def run_diagnostics(measure_level: bool = True) -> DiagnosticsReport:
             selected_input=None,
             selected_output=None,
             input_peak_level=None,
+            ambient_noise_rms=None,
+            recommended_vad_threshold=None,
             warnings=[],
         )
 
@@ -83,6 +121,8 @@ def run_diagnostics(measure_level: bool = True) -> DiagnosticsReport:
     selected_input = None
     selected_output = None
     peak_level = None
+    ambient_rms = None
+    recommended_threshold = None
 
     if inputs:
         device = select_input_device(config.input_device_hint, sd_module=sd)
@@ -98,6 +138,21 @@ def run_diagnostics(measure_level: bool = True) -> DiagnosticsReport:
             except Exception as error:  # pragma: no cover - hardware dependent
                 warnings.append(f"Could not measure input level: {error}")
 
+        if calibrate_noise:
+            try:
+                ambient_rms, recommended_threshold = calibrate_noise_floor(
+                    device.index, sd_module=sd
+                )
+                if recommended_threshold >= config.vad_energy_threshold:
+                    warnings.append(
+                        f"Ambient noise (rms={ambient_rms:.0f}) is high relative to the "
+                        f"configured VAD_ENERGY_THRESHOLD ({config.vad_energy_threshold:.0f}). "
+                        f"Consider raising it to at least {recommended_threshold} to avoid "
+                        "false triggers from background noise."
+                    )
+            except Exception as error:  # pragma: no cover - hardware dependent
+                warnings.append(f"Could not calibrate noise floor: {error}")
+
     if outputs:
         selected_output = select_output_device(config.output_device_hint, sd_module=sd).name
 
@@ -109,6 +164,8 @@ def run_diagnostics(measure_level: bool = True) -> DiagnosticsReport:
         selected_input=selected_input,
         selected_output=selected_output,
         input_peak_level=peak_level,
+        ambient_noise_rms=ambient_rms,
+        recommended_vad_threshold=recommended_threshold,
         warnings=warnings,
     )
 
@@ -121,7 +178,10 @@ def _print_report(report: DiagnosticsReport) -> None:
 
 
 if __name__ == "__main__":
+    import sys
+
+    calibrate = "--calibrate-noise" in sys.argv
     started = time.monotonic()
-    result = run_diagnostics()
+    result = run_diagnostics(calibrate_noise=calibrate)
     _print_report(result)
     logger.info("Diagnostics completed in %.2fs", time.monotonic() - started)

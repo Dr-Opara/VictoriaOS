@@ -29,6 +29,10 @@ class MiniPCUnavailable(RuntimeError):
     """Raised when the Mini PC cannot be reached at all."""
 
 
+class ProtocolError(RuntimeError):
+    """Raised when the Mini PC sends a message that violates the voice-stream protocol."""
+
+
 @dataclass
 class ConnectInfo:
     session_id: str
@@ -134,13 +138,22 @@ class VoiceStream:
         return json.loads(message)
 
     def receive_turn_result(self, timeout: float = 30.0) -> tuple[dict[str, Any], bytes | None]:
-        """Receive a ``result`` JSON message and the audio that may follow it."""
+        """Receive a ``result`` JSON message and the audio that may follow it.
+
+        Raises :class:`ProtocolError` if the server sends binary audio
+        where a JSON result was expected - a protocol violation that should
+        surface clearly rather than crashing on an attribute access deeper
+        in the caller.
+        """
         result = self.receive(timeout=timeout)
         while isinstance(result, dict) and result.get("event") == "pong":
             result = self.receive(timeout=timeout)
 
+        if not isinstance(result, dict):
+            raise ProtocolError("Expected a JSON result message but received binary audio.")
+
         audio: bytes | None = None
-        if isinstance(result, dict) and result.get("status") == "awake":
+        if result.get("status") == "awake":
             maybe_audio = self.receive(timeout=timeout)
             if isinstance(maybe_audio, bytes):
                 audio = maybe_audio
