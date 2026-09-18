@@ -2,7 +2,7 @@ alembic==1.18.4
 altair==6.1.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
-anyio==4.14.0
+anyio==4.14.2
 attrs==26.1.0
 bcrypt==4.0.1
 black==26.5.1
